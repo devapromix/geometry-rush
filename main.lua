@@ -1,15 +1,16 @@
 utils = require("utils")
 sound = require("game.sound")
 music = require("game.music")
+constants = require("constants")
 
 function love.load()
     player = {
         x = 0,
         y = 0,
-        width = 32,
-        height = 32,
-        speed = 250,
-        jumpForce = -350,
+        width = constants.PLAYER_SIZE,
+        height = constants.PLAYER_SIZE,
+        speed = constants.PLAYER_SPEED,
+        jumpForce = constants.PLAYER_JUMP_FORCE,
         velocityX = 0,
         velocityY = 0,
         is_jumping = false,
@@ -27,20 +28,20 @@ function love.load()
         is_powerup_blinking = false,
         powerup_blink_timer = 0
     }
-    gravity = 800
+    gravity = constants.GRAVITY
     platforms = {}
     enemies = {}
     particles = {}
     coins = {}
     bullets = {}
     end_points = {}
-    tileSize = 32
+    tileSize = constants.TILE_SIZE
     mapWidth = config.map.width
     mapHeight = config.map.height
     camera = { x = player.startX + player.width / 2 - window.width / 2 - window.width }
     isResetting = false
     resetCameraTargetX = 0
-    cameraSpeed = 2000
+    cameraSpeed = constants.CAMERA_SPEED
     is_initial_scrolling = true
     initial_scroll_timer = 0
     is_end_scrolling = false
@@ -74,16 +75,16 @@ function loadMap(filename)
                 table.insert(coins, {
                     x = (x - 1) * tileSize,
                     y = y * tileSize,
-                    width = 16,
-                    height = 16,
+                    width = constants.COIN_SIZE,
+                    height = constants.COIN_SIZE,
                     is_collected = false
                 })
             elseif char == "+" then
                 table.insert(coins, {
                     x = (x - 1) * tileSize,
                     y = y * tileSize,
-                    width = 16,
-                    height = 16,
+                    width = constants.COIN_SIZE,
+                    height = constants.COIN_SIZE,
                     is_collected = false,
                     is_powerup = true
                 })
@@ -94,7 +95,6 @@ function loadMap(filename)
                     width = tileSize,
                     height = tileSize
                 })
-                print("End point added at x=" .. (x - 1) * tileSize .. ", y=" .. y * tileSize) -- Дебаг-вивід
             end
         end
         y = y + 1
@@ -103,9 +103,9 @@ function loadMap(filename)
         table.insert(enemies, {
             x = pos.x,
             y = pos.y,
-            width = 32,
-            height = 32,
-            speed = 100,
+            width = constants.PLAYER_SIZE,
+            height = constants.PLAYER_SIZE,
+            speed = constants.ENEMY_SPEED,
             direction = 1
         })
     end
@@ -145,7 +145,7 @@ function restrictPlayerBounds()
 end
 
 function createParticles(x, y)
-    for i = 1, 20 do
+    for i = 1, constants.PARTICLE_COUNT do
         table.insert(particles, {
             x = x + math.random(-10, 10),
             y = y + math.random(-10, 10),
@@ -162,9 +162,9 @@ function love.update(dt)
         initial_scroll_timer = initial_scroll_timer + dt
         local target_camera_x = math.max(0, math.min(player.startX + player.width / 2 - window.width / 2, config.map.width * tileSize - window.width))
         local start_camera_x = player.startX + player.width / 2 - window.width / 2 - window.width
-        local t = math.min(initial_scroll_timer / 0.5, 1.0)
+        local t = math.min(initial_scroll_timer / constants.TRANSITION_TIME, 1.0)
         camera.x = start_camera_x + (target_camera_x - start_camera_x) * t
-        if initial_scroll_timer >= 0.5 then
+        if initial_scroll_timer >= constants.TRANSITION_TIME then
             is_initial_scrolling = false
             camera.x = target_camera_x
         end
@@ -172,12 +172,11 @@ function love.update(dt)
         end_scroll_timer = end_scroll_timer + dt
         local start_camera_x = camera.x
         local target_camera_x = start_camera_x + window.width
-        local t = math.min(end_scroll_timer / 0.5, 1.0)
+        local t = math.min(end_scroll_timer / constants.TRANSITION_TIME, 1.0)
         camera.x = start_camera_x + ((target_camera_x - start_camera_x) * t)
-        if end_scroll_timer >= 0.5 then
+        if end_scroll_timer >= constants.TRANSITION_TIME then
             is_end_scrolling = false
 			camera.x = target_camera_x
-            --resetLevel()
         end
     elseif isResetting then
         local distance = resetCameraTargetX - camera.x
@@ -279,7 +278,7 @@ function love.update(dt)
             end
             enemy.x = next_x
             if not player.is_stunned and not player.is_dead and utils.checkCollision(player, enemy) then
-                if player.velocityY > 0 and prevY + player.height <= enemy.y + 10 then
+                if player.velocityY > 0 and prevY + player.height <= enemy.y + constants.ENEMY_PLATFORM_DETECTION then
                     table.insert(enemies_to_remove, i)
                     createParticles(enemy.x, enemy.y)
                     player.velocityY = player.jumpForce
@@ -328,10 +327,10 @@ function love.update(dt)
         end
         if player.is_blinking then
             player.blink_timer = player.blink_timer + dt
-            if player.blink_timer >= 0.1 then
-                player.blink_timer = player.blink_timer - 0.1
+            if player.blink_timer >= constants.BLINK_INTERVAL then
+                player.blink_timer = player.blink_timer - constants.BLINK_INTERVAL
                 player.blink_count = player.blink_count + 1
-                if player.blink_count >= 6 then
+                if player.blink_count >= constants.BLINK_COUNT then
                     player.is_blinking = false
                     player.is_stunned = false
                 end
@@ -339,16 +338,16 @@ function love.update(dt)
         end
         if player.is_powerup_blinking then
             player.powerup_blink_timer = player.powerup_blink_timer + dt
-            if player.powerup_blink_timer >= 1.0 then
+            if player.powerup_blink_timer >= constants.POWERUP_BLINK_TIME then
                 player.is_powerup_blinking = false
             end
         end
         if player.is_exploding then
             player.explode_timer = player.explode_timer + dt
-            if player.explode_timer >= 0.5 then
+            if player.explode_timer >= constants.EXPLODE_TIME then
                 resetLevel()
             end
-        elseif player.y > 600 then
+        elseif player.y > constants.DEATH_Y then
             player.is_exploding = true
             player.explode_timer = 0
             createParticles(player.x, player.y)
@@ -369,10 +368,10 @@ function love.keypressed(key)
         table.insert(bullets, {
             x = player.x + player.width / 2,
             y = player.y + player.height / 2,
-            width = 8,
-            height = 8,
-            velocityX = direction * 500,
-            lifetime = 0.5
+            width = constants.BULLET_SIZE,
+            height = constants.BULLET_SIZE,
+            velocityX = direction * constants.BULLET_SPEED,
+            lifetime = constants.BULLET_LIFETIME
         })
     end
 end
@@ -380,58 +379,58 @@ end
 function love.draw()
     love.graphics.push()
     love.graphics.translate(-camera.x, 0)
-    love.graphics.setColor(0.6, 0.4, 0.2)
+    love.graphics.setColor(constants.COLORS.PLATFORM)
     for _, platform in ipairs(platforms) do
         love.graphics.rectangle("fill", platform.x, platform.y, platform.width, platform.height)
     end
     if not isResetting and not player.is_exploding then
         if player.is_blinking and math.floor(player.blink_count) % 2 == 1 then
-            love.graphics.setColor(0.7, 1, 0.7)
-        elseif player.is_powerup_blinking and math.floor(player.powerup_blink_timer / 0.1) % 2 == 1 then
-            love.graphics.setColor(0.5, 0, 1)
+            love.graphics.setColor(constants.COLORS.PLAYER_BLINKING)
+        elseif player.is_powerup_blinking and math.floor(player.powerup_blink_timer / constants.BLINK_INTERVAL) % 2 == 1 then
+            love.graphics.setColor(constants.COLORS.PLAYER_POWERUP)
         elseif player.can_shoot then
-            love.graphics.setColor(0.5, 0, 1)
+            love.graphics.setColor(constants.COLORS.PLAYER_POWERUP)
         else
-            love.graphics.setColor(0, 1, 0)
+            love.graphics.setColor(constants.COLORS.PLAYER_NORMAL)
         end
         love.graphics.rectangle("fill", player.x, player.y, player.width, player.height)
     end
-    love.graphics.setColor(1, 0, 0)
+    love.graphics.setColor(constants.COLORS.ENEMY)
     for _, enemy in ipairs(enemies) do
         love.graphics.rectangle("fill", enemy.x, enemy.y, enemy.width, player.height)
     end
-    love.graphics.setColor(0.8, 0, 0)
+    love.graphics.setColor(constants.COLORS.PARTICLE)
     for _, particle in ipairs(particles) do
         love.graphics.rectangle("fill", particle.x, particle.y, particle.size, particle.size)
     end
-    love.graphics.setColor(1, 1, 0)
+    love.graphics.setColor(constants.COLORS.COIN)
     for _, coin in ipairs(coins) do
         if not coin.is_collected and not coin.is_powerup then
             love.graphics.rectangle("fill", coin.x, coin.y, coin.width, coin.height)
         end
     end
-    love.graphics.setColor(0.5, 0, 1)
+    love.graphics.setColor(constants.COLORS.POWERUP)
     for _, coin in ipairs(coins) do
         if not coin.is_collected and coin.is_powerup then
             love.graphics.rectangle("fill", coin.x, coin.y, coin.width, coin.height)
         end
     end
-    love.graphics.setColor(0.5, 0, 1)
+    love.graphics.setColor(constants.COLORS.BULLET)
     for _, bullet in ipairs(bullets) do
         love.graphics.rectangle("fill", bullet.x, bullet.y, bullet.width, bullet.height)
     end
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(constants.COLORS.END_POINT)
     for _, end_point in ipairs(end_points) do
         love.graphics.rectangle("fill", end_point.x, end_point.y, end_point.width, end_point.height)
     end
     love.graphics.pop()
     if is_initial_scrolling then
-        local alpha = 1.0 - math.min(initial_scroll_timer / 0.5, 1.0)
-        love.graphics.setColor(0, 0, 0, alpha)
+        local alpha = 1.0 - math.min(initial_scroll_timer / constants.TRANSITION_TIME, 1.0)
+        love.graphics.setColor(constants.COLORS.BLACK[1], constants.COLORS.BLACK[2], constants.COLORS.BLACK[3], alpha)
         love.graphics.rectangle("fill", 0, 0, window.width, love.graphics.getHeight())
     elseif is_end_scrolling then
-        local alpha = 1.0 - math.min(end_scroll_timer / 0.5, 1.0)
-        love.graphics.setColor(0, 0, 0, alpha)
+        local alpha = 1.0 - math.min(end_scroll_timer / constants.TRANSITION_TIME, 1.0)
+        love.graphics.setColor(constants.COLORS.BLACK[1], constants.COLORS.BLACK[2], constants.COLORS.BLACK[3], alpha)
         love.graphics.rectangle("fill", 0, 0, window.width, love.graphics.getHeight())
     end
 end
