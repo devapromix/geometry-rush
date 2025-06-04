@@ -3,11 +3,11 @@ utils = require("utils")
 player = require("player")
 sound = require("game.sound")
 music = require("game.music")
+enemy = require("enemy")
 
 function love.load()
     gravity = constants.GRAVITY
     platforms = {}
-    enemies = {}
     particles = {}
     coins = {}
     bullets = {}
@@ -76,16 +76,7 @@ function loadMap(filename)
         end
         y = y + 1
     end
-    for i, pos in ipairs(enemy_positions) do
-        table.insert(enemies, {
-            x = pos.x,
-            y = pos.y,
-            width = constants.PLAYER_SIZE,
-            height = constants.PLAYER_SIZE,
-            speed = constants.ENEMY_SPEED,
-            direction = 1
-        })
-    end
+    enemy.load(enemy_positions)
 end
 
 function resetLevel()
@@ -128,7 +119,7 @@ function love.update(dt)
             camera.x = camera.x + distance * math.min(cameraSpeed * dt / math.abs(distance), 1)
         end
     else
-        local should_reset, end_reached = player.update(dt, platforms, enemies, coins, end_points, bullets, particles, gravity, mapWidth, tileSize)
+        local should_reset, end_reached = player.update(dt, platforms, enemy.getEnemies(), coins, end_points, bullets, particles, gravity, mapWidth, tileSize)
         
         if should_reset then
             resetLevel()
@@ -137,37 +128,7 @@ function love.update(dt)
             end_scroll_timer = 0
         end
         
-        local enemies_to_remove = {}
-        for i, enemy in ipairs(enemies) do
-            local old_x = enemy.x
-            local old_direction = enemy.direction
-            local next_x = enemy.x + enemy.speed * enemy.direction * dt
-            local has_platform = false
-            local hits_wall = false
-            for _, platform in ipairs(platforms) do
-                if utils.checkCollision({
-                    x = enemy.direction == 1 and next_x + enemy.width or next_x,
-                    y = enemy.y + enemy.height,
-                    width = 1,
-                    height = 1
-                }, platform) then
-                    has_platform = true
-                end
-                if utils.checkCollision({
-                    x = enemy.direction == 1 and next_x + enemy.width or next_x,
-                    y = enemy.y,
-                    width = 1,
-                    height = enemy.height
-                }, platform) then
-                    hits_wall = true
-                end
-            end
-            if not has_platform or hits_wall then
-                enemy.direction = -enemy.direction
-                next_x = enemy.x
-            end
-            enemy.x = next_x
-        end
+        enemy.update(dt, platforms)
         
         for i = #bullets, 1, -1 do
             local bullet = bullets[i]
@@ -176,19 +137,19 @@ function love.update(dt)
             if bullet.lifetime <= 0 then
                 table.remove(bullets, i)
             else
-                for j = #enemies, 1, -1 do
-                    if utils.checkCollision(bullet, enemies[j]) then
+                for j = #enemy.getEnemies(), 1, -1 do
+                    if utils.checkCollision(bullet, enemy.getEnemies()[j]) then
                         for k = 1, constants.PARTICLE_COUNT do
                             table.insert(particles, {
-                                x = enemies[j].x + math.random(-10, 10),
-                                y = enemies[j].y + math.random(-10, 10),
+                                x = enemy.getEnemies()[j].x + math.random(-10, 10),
+                                y = enemy.getEnemies()[j].y + math.random(-10, 10),
                                 size = math.random(4, 8),
                                 velocityX = math.random(-100, 100),
                                 velocityY = math.random(-200, -50),
                                 lifetime = math.random(0.5, 1.0)
                             })
                         end
-                        table.remove(enemies, j)
+                        table.remove(enemy.getEnemies(), j)
                         table.remove(bullets, i)
                         break
                     end
@@ -242,8 +203,8 @@ function love.draw()
         love.graphics.rectangle("fill", player.x, player.y, player.width, player.height)
     end
     love.graphics.setColor(constants.COLORS.ENEMY)
-    for _, enemy in ipairs(enemies) do
-        love.graphics.rectangle("fill", enemy.x, enemy.y, enemy.width, player.height)
+    for _, e in ipairs(enemy.getEnemies()) do
+        love.graphics.rectangle("fill", e.x, e.y, e.width, player.height)
     end
     love.graphics.setColor(constants.COLORS.PARTICLE)
     for _, particle in ipairs(particles) do
